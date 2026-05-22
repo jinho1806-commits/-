@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>대시보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=Noto+Sans+KR:wght@300;400&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f7f5f0;
+  --surface: rgba(255,255,255,0.82);
+  --border: rgba(0,0,0,0.07);
+  --text: #1a1916;
+  --text2: #8a8070;
+  --text3: #c0b8a8;
+  --accent: #c8956a;
+  --rail: 56px;
+  --sidebar-w: 220px;
+  --panel-w: 0px;
+}
+
+html, body { width: 100%; height: 100%; overflow: hidden; }
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  display: flex;
+}
+
+.bg-canvas {
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 70% 60% at 15% 15%, rgba(210,190,160,0.26) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 70% at 85% 85%, rgba(160,190,215,0.2) 0%, transparent 65%),
+    #f7f5f0;
+}
+
+/* ══════════════════════════════
+   SIDEBAR
+══════════════════════════════ */
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: var(--rail);
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid var(--border);
+  z-index: 100;
+  transition: width 0.38s cubic-bezier(0.16,1,0.3,1);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.sidebar.expanded { width: calc(var(--rail) + var(--sidebar-w)); }
+.sidebar.pinned   { width: calc(var(--rail) + var(--sidebar-w)); }
+
+/* hover expand only when not pinned */
+.sidebar:not(.pinned):hover { width: calc(var(--rail) + var(--sidebar-w)); }
+
+/* Rail */
+.rail {
+  width: var(--rail);
+  flex-shrink: 0;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 20px 0; gap: 4px;
+  position: absolute; top: 0; left: 0; bottom: 0;
+}
+
+.rail-logo {
+  width: 32px; height: 32px; border-radius: 9px;
+  background: var(--text);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px; flex-shrink: 0;
+}
+.rail-logo svg { width: 15px; height: 15px; fill: #f7f5f0; }
+
+.rail-btn {
+  width: 34px; height: 34px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text3); cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border: none; background: transparent;
+  flex-shrink: 0;
+}
+.rail-btn:hover { background: rgba(0,0,0,0.05); color: var(--text); }
+.rail-btn.active { color: var(--accent); }
+.rail-btn svg { width: 17px; height: 17px; pointer-events: none; }
+
+.rail-divider { width: 20px; height: 1px; background: var(--border); margin: 8px 0; }
+
+/* Pin button at bottom of rail */
+.rail-pin {
+  margin-top: auto;
+  width: 34px; height: 34px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text3); cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.25s;
+  border: none; background: transparent;
+  margin-bottom: 4px;
+}
+.rail-pin:hover { background: rgba(0,0,0,0.05); color: var(--text); }
+.rail-pin.pinned { color: var(--accent); transform: rotate(45deg); }
+.rail-pin svg { width: 16px; height: 16px; }
+
+/* Sidebar content panel */
+.sidebar-panel {
+  position: absolute; top: 0; left: var(--rail); bottom: 0;
+  width: var(--sidebar-w);
+  padding: 20px 16px;
+  display: flex; flex-direction: column;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.sidebar.expanded .sidebar-panel,
+.sidebar.pinned .sidebar-panel,
+.sidebar:not(.pinned):hover .sidebar-panel {
+  opacity: 1; pointer-events: all;
+}
+
+.sidebar-title {
+  font-size: 12px; font-weight: 400; letter-spacing: 0.08em;
+  color: var(--text); margin-bottom: 24px; white-space: nowrap;
+  padding-left: 4px;
+}
+
+.nav-label {
+  font-size: 9.5px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--text3); margin: 0 0 6px 4px;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: 9px;
+  cursor: pointer; color: var(--text2); font-size: 12.5px;
+  transition: background 0.13s, color 0.13s;
+  margin-bottom: 1px; white-space: nowrap;
+  border: none; background: transparent; text-decoration: none;
+  font-family: 'Noto Sans KR', sans-serif;
+  width: 100%; text-align: left;
+}
+.nav-item:hover { background: rgba(0,0,0,0.04); color: var(--text); }
+.nav-item.active { background: rgba(200,149,106,0.1); color: var(--accent); }
+.nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+.nav-divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+/* ══════════════════════════════
+   LAYOUT SHELL
+══════════════════════════════ */
+.shell {
+  display: flex;
+  flex: 1;
+  margin-left: var(--rail);
+  height: 100vh;
+  position: relative; z-index: 10;
+  transition: margin-left 0.38s cubic-bezier(0.16,1,0.3,1);
+}
+body.sidebar-pinned .shell { margin-left: calc(var(--rail) + var(--sidebar-w)); }
+
+/* ══════════════════════════════
+   CLOCK VIEW
+══════════════════════════════ */
+.view {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  min-width: 0;
+  transition: flex 0.38s cubic-bezier(0.16,1,0.3,1);
+}
+
+.clock-stage {
+  text-align: center; user-select: none;
+  animation: fadeUp 1.1s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.clock-day {
+  font-size: 11px; letter-spacing: 0.42em;
+  color: var(--text3); text-transform: uppercase; font-weight: 300;
+  margin-bottom: 16px;
+}
+.clock-time {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(64px, 12vw, 160px);
+  font-weight: 400; color: var(--text);
+  letter-spacing: -0.02em; line-height: 1;
+  position: relative; display: inline-block;
+}
+.clock-sep {
+  color: var(--text3);
+  animation: blink 2s ease-in-out infinite;
+}
+@keyframes blink {
+  0%,44%  { opacity: 1; }
+  50%,94% { opacity: 0.15; }
+  100%    { opacity: 1; }
+}
+.clock-sec {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(24px, 4vw, 52px);
+  color: var(--text3); vertical-align: super;
+  margin-left: 4px;
+}
+.meridiem {
+  position: absolute; top: 6px;
+  right: clamp(-44px, -4.5vw, -28px);
+  font-size: clamp(9px, 1.1vw, 13px);
+  letter-spacing: 0.2em; color: var(--text3);
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 300;
+}
+.clock-date {
+  margin-top: 14px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+}
+.clock-date-part { font-size: 13px; color: var(--text2); letter-spacing: 0.1em; font-weight: 300; }
+.clock-date-dot  { width: 3px; height: 3px; border-radius: 50%; background: var(--text3); }
+
+.progress-wrap { margin-top: 36px; display: flex; flex-direction: column; align-items: center; gap: 7px; }
+.progress-track {
+  width: clamp(160px, 24vw, 320px); height: 1px;
+  background: rgba(0,0,0,0.08); position: relative; border-radius: 99px;
+}
+.progress-fill {
+  position: absolute; top: 0; left: 0; height: 100%;
+  background: linear-gradient(90deg, var(--accent), #e0b898);
+  border-radius: 99px; transition: width 1s linear;
+}
+.progress-dot {
+  position: absolute; top: -3px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(200,149,106,0.18);
+  transition: left 1s linear; transform: translateX(-50%);
+}
+.progress-info {
+  width: clamp(160px, 24vw, 320px);
+  display: flex; justify-content: space-between;
+}
+.progress-lbl { font-size: 9.5px; letter-spacing: 0.2em; color: var(--text3); text-transform: uppercase; }
+.progress-pct { font-size: 10.5px; color: var(--accent); }
+
+/* ══════════════════════════════
+   IFRAME PANEL
+══════════════════════════════ */
+.iframe-panel {
+  width: 0; flex-shrink: 0;
+  height: 100vh;
+  border-left: 1px solid transparent;
+  transition: width 0.42s cubic-bezier(0.16,1,0.3,1), border-color 0.3s;
+  overflow: hidden;
+  position: relative;
+  background: #fff;
+}
+.iframe-panel.open {
+  width: min(560px, 52vw);
+  border-left-color: var(--border);
+}
+.iframe-panel.open.fullscreen {
+  width: 100%;
+}
+
+.iframe-panel iframe {
+  width: 100%; height: 100%;
+  border: none; display: block;
+}
+
+.iframe-header {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 44px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 12px; gap: 8px;
+  z-index: 10;
+}
+.iframe-favicon { width: 16px; height: 16px; flex-shrink: 0; }
+.iframe-title { font-size: 12.5px; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.iframe-actions { display: flex; gap: 4px; }
+.iframe-btn {
+  width: 28px; height: 28px; border-radius: 7px;
+  border: 1px solid var(--border); background: transparent;
+  cursor: pointer; color: var(--text2); font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.13s;
+}
+.iframe-btn:hover { background: rgba(0,0,0,0.05); color: var(--text); }
+.iframe-btn svg { width: 13px; height: 13px; }
+
+.iframe-body {
+  position: absolute; top: 44px; left: 0; right: 0; bottom: 0;
+}
+.iframe-body iframe { width: 100%; height: 100%; border: none; }
+
+/* Blocked notice */
+.iframe-blocked {
+  position: absolute; inset: 44px 0 0;
+  display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 32px; text-align: center;
+  background: #fff;
+}
+.iframe-blocked.show { display: flex; }
+.iframe-blocked-icon { font-size: 36px; }
+.iframe-blocked-title { font-size: 15px; color: var(--text); }
+.iframe-blocked-desc { font-size: 12.5px; color: var(--text2); line-height: 1.65; max-width: 280px; }
+.iframe-open-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 20px; border-radius: 10px;
+  background: var(--text); color: #f7f5f0;
+  font-size: 12.5px; text-decoration: none;
+  transition: opacity 0.15s;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.iframe-open-btn:hover { opacity: 0.82; }
+
+.iframe-shortcuts { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin-top: 4px; }
+.iframe-sc {
+  padding: 7px 14px; border-radius: 9px;
+  border: 1px solid var(--border); font-size: 12px;
+  color: var(--text2); text-decoration: none;
+  transition: background 0.12s, color 0.12s;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.iframe-sc:hover { background: rgba(0,0,0,0.04); color: var(--text); }
+
+/* ══════════════════════════════
+   GMAIL WIDGET
+══════════════════════════════ */
+.gmail-widget {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  background: #fff;
+}
+.gmail-widget.show { display: flex; }
+
+.gmail-login {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px; padding: 40px;
+}
+.gmail-login-icon { font-size: 48px; }
+.gmail-login-title { font-size: 16px; color: var(--text); font-weight: 500; }
+.gmail-login-desc { font-size: 13px; color: var(--text2); text-align: center; max-width: 320px; line-height: 1.6; }
+.gmail-login-btn {
+  margin-top: 8px;
+  padding: 10px 22px;
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif;
+  display: flex; align-items: center; gap: 10px;
+}
+.gmail-login-btn:hover { background: #1557b0; }
+.gmail-login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.gmail-mailbox {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+}
+.gmail-mailbox.show { display: flex; }
+
+.gmail-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: #fafaf8;
+}
+.gmail-userinfo { display: flex; align-items: center; gap: 10px; }
+.gmail-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #c8956a; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 500;
+}
+.gmail-email { font-size: 12px; color: var(--text); font-weight: 500; }
+.gmail-actions { display: flex; gap: 4px; }
+.gmail-tool-btn {
+  background: transparent; border: none;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  color: var(--text2);
+  cursor: pointer;
+  border-radius: 6px;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.gmail-tool-btn:hover { background: rgba(0,0,0,0.05); color: var(--text); }
+
+.gmail-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+.gmail-item {
+  display: flex; gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.gmail-item:hover { background: #f8f6f1; }
+.gmail-item.unread { background: rgba(200,149,106,0.04); }
+.gmail-item.unread .gmail-sender,
+.gmail-item.unread .gmail-subject { font-weight: 500; color: var(--text); }
+
+.gmail-meta { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 3px; }
+.gmail-row1 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.gmail-sender {
+  font-size: 12.5px;
+  color: var(--text);
+  font-weight: 400;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 180px;
+}
+.gmail-date { font-size: 11px; color: var(--text3); white-space: nowrap; flex-shrink: 0; }
+.gmail-subject {
+  font-size: 12.5px;
+  color: var(--text2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gmail-snippet {
+  font-size: 11.5px;
+  color: var(--text3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.gmail-loading {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2); font-size: 13px;
+}
+.gmail-error {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px; padding: 30px;
+  text-align: center;
+}
+.gmail-error-icon { font-size: 36px; }
+.gmail-error-title { font-size: 14px; color: var(--text); font-weight: 500; }
+.gmail-error-desc { font-size: 12px; color: var(--text2); line-height: 1.6; max-width: 320px; }
+</style>
+</head>
+<body>
+
+<div class="bg-canvas"></div>
+
+<!-- ── SIDEBAR ── -->
+<nav class="sidebar" id="sidebar">
+  <!-- Rail (always visible) -->
+  <div class="rail">
+    <div class="rail-logo">
+      <svg viewBox="0 0 16 16"><path d="M8 2L2 6v8h4v-4h4v4h4V6L8 2z"/></svg>
+    </div>
+
+    <button class="rail-btn active" title="시계" onclick="showView('clock')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </button>
+    <button class="rail-btn" title="Gmail" onclick="openFrame('gmail')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+    </button>
+
+    <div class="rail-divider"></div>
+
+    <button class="rail-btn" title="Google 캘린더" onclick="openFrame('calendar')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    </button>
+    <button class="rail-btn" title="Google Drive" onclick="openFrame('drive')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17.5L15 6 9 16l-2-3.5L2 17.5h20z"/><path d="M15 6H9"/></svg>
+    </button>
+    <button class="rail-btn" title="YouTube" onclick="openFrame('youtube')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><polygon points="10 9 15 12 10 15" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button class="rail-btn" title="브랜드온" onclick="openFrame('brandon')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+    </button>
+
+    <!-- Pin -->
+    <button class="rail-pin" id="pin-btn" title="사이드바 고정" onclick="togglePin()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>
+    </button>
+  </div>
+
+  <!-- Expanded panel -->
+  <div class="sidebar-panel">
+    <div class="sidebar-title">내 대시보드</div>
+
+    <div class="nav-label">홈</div>
+    <button class="nav-item active" id="nav-clock" onclick="showView('clock')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      시계
+    </button>
+
+    <div class="nav-divider"></div>
+    <div class="nav-label">앱</div>
+
+    <button class="nav-item" id="nav-gmail" onclick="openFrame('gmail')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+      Gmail
+    </button>
+    <button class="nav-item" id="nav-calendar" onclick="openFrame('calendar')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Google 캘린더
+    </button>
+    <button class="nav-item" id="nav-drive" onclick="openFrame('drive')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17.5L15 6 9 16l-2-3.5L2 17.5h20z"/><path d="M15 6H9"/></svg>
+      Google Drive
+    </button>
+    <button class="nav-item" id="nav-youtube" onclick="openFrame('youtube')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><polygon points="10 9 15 12 10 15" fill="currentColor" stroke="none"/></svg>
+      YouTube
+    </button>
+    <button class="nav-item" id="nav-brandon" onclick="openFrame('brandon')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+      브랜드온
+    </button>
+  </div>
+</nav>
+
+<!-- ── SHELL ── -->
+<div class="shell" id="shell">
+
+  <!-- Clock view -->
+  <div class="view" id="view-clock">
+    <div class="clock-stage">
+      <div class="clock-day" id="clock-day">—</div>
+      <div class="clock-time">
+        <span id="time-hm">00:00</span><span class="clock-sep">:</span><span class="clock-sec" id="time-s">00</span>
+        <span class="meridiem" id="meridiem">AM</span>
+      </div>
+      <div class="clock-date">
+        <span class="clock-date-part" id="d-year">2025</span>
+        <div class="clock-date-dot"></div>
+        <span class="clock-date-part" id="d-month">1월</span>
+        <div class="clock-date-dot"></div>
+        <span class="clock-date-part" id="d-day">1일</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-track">
+          <div class="progress-fill" id="pfill" style="width:0%"></div>
+          <div class="progress-dot"  id="pdot"  style="left:0%"></div>
+        </div>
+        <div class="progress-info">
+          <span class="progress-lbl">00:00</span>
+          <span class="progress-pct" id="ppct">0%</span>
+          <span class="progress-lbl">24:00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- iframe panel -->
+  <div class="iframe-panel" id="iframe-panel">
+    <div class="iframe-header">
+      <img class="iframe-favicon" id="iframe-favicon" src="" alt="" />
+      <span class="iframe-title" id="iframe-title">—</span>
+      <div class="iframe-actions">
+        <a class="iframe-btn" id="iframe-newwin" href="#" target="_blank" title="새 탭으로 열기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+        <button class="iframe-btn" title="닫기" onclick="closeFrame()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="iframe-body">
+      <iframe id="main-iframe" src="" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>
+    </div>
+    <!-- Shown when site blocks iframe -->
+    <div class="iframe-blocked" id="iframe-blocked">
+      <div class="iframe-blocked-icon" id="blocked-icon">📬</div>
+      <div class="iframe-blocked-title" id="blocked-title">Gmail</div>
+      <div class="iframe-blocked-desc">보안 정책으로 인해 직접 임베드가 차단됩니다.<br>아래 버튼으로 새 탭에서 바로 열거나 바로가기를 이용하세요.</div>
+      <a class="iframe-open-btn" id="blocked-open" href="#" target="_blank">새 탭에서 열기 ↗</a>
+      <div class="iframe-shortcuts" id="blocked-shortcuts"></div>
+    </div>
+
+    <!-- Gmail Widget -->
+    <div class="gmail-widget" id="gmail-widget">
+      <!-- 로그인 화면 -->
+      <div class="gmail-login" id="gmail-login">
+        <div class="gmail-login-icon">📬</div>
+        <div class="gmail-login-title">Gmail 연동</div>
+        <div class="gmail-login-desc">Google 계정에 로그인하면 받은편지함의 최근 메일을 여기서 바로 확인할 수 있어요.</div>
+        <button class="gmail-login-btn" id="gmail-login-btn" onclick="handleGmailLogin()" disabled>
+          <span id="gmail-login-btn-text">초기화 중...</span>
+        </button>
+      </div>
+
+      <!-- 메일함 화면 -->
+      <div class="gmail-mailbox" id="gmail-mailbox">
+        <div class="gmail-toolbar">
+          <div class="gmail-userinfo">
+            <div class="gmail-avatar" id="gmail-avatar">?</div>
+            <div class="gmail-email" id="gmail-email">—</div>
+          </div>
+          <div class="gmail-actions">
+            <button class="gmail-tool-btn" onclick="loadGmailMessages()">새로고침</button>
+            <button class="gmail-tool-btn" onclick="handleGmailLogout()">로그아웃</button>
+          </div>
+        </div>
+        <div class="gmail-list" id="gmail-list">
+          <div class="gmail-loading">메일 불러오는 중...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Google API Libraries -->
+<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://accounts.google.com/gsi/client"></script>
+
+<script>
+/* ── Clock ── */
+const DAYS   = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+const MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+function pad(n){ return String(n).padStart(2,'0'); }
+function tick(){
+  const n = new Date();
+  const h=n.getHours(), m=n.getMinutes(), s=n.getSeconds();
+  const h12 = h%12||12;
+  document.getElementById('time-hm').textContent = pad(h12)+':'+pad(m);
+  document.getElementById('time-s').textContent  = pad(s);
+  document.getElementById('meridiem').textContent = h<12?'AM':'PM';
+  document.getElementById('clock-day').textContent = DAYS[n.getDay()];
+  document.getElementById('d-year').textContent  = n.getFullYear();
+  document.getElementById('d-month').textContent = MONTHS[n.getMonth()];
+  document.getElementById('d-day').textContent   = n.getDate()+'일';
+  const pct = (( h*3600+m*60+s)/86400*100).toFixed(1);
+  document.getElementById('pfill').style.width = pct+'%';
+  document.getElementById('pdot').style.left   = pct+'%';
+  document.getElementById('ppct').textContent  = pct+'%';
+}
+setInterval(tick,1000); tick();
+
+/* ── Sidebar pin ── */
+let pinned = false;
+function togglePin(){
+  pinned = !pinned;
+  document.getElementById('sidebar').classList.toggle('pinned', pinned);
+  document.getElementById('pin-btn').classList.toggle('pinned', pinned);
+  document.body.classList.toggle('sidebar-pinned', pinned);
+}
+
+/* ── Frame apps ── */
+const APPS = {
+  gmail:    { title:'Gmail',           url:'https://mail.google.com',           favicon:'https://www.google.com/s2/favicons?domain=mail.google.com&sz=32',    icon:'📬', shortcuts:[{l:'받은편지함',u:'https://mail.google.com/mail/u/0/#inbox'},{l:'중요편지함',u:'https://mail.google.com/mail/u/0/#starred'},{l:'보낸편지함',u:'https://mail.google.com/mail/u/0/#sent'},{l:'메일 쓰기',u:'https://mail.google.com/mail/?view=cm'}] },
+  calendar: { title:'Google 캘린더',   url:'https://calendar.google.com',       favicon:'https://www.google.com/s2/favicons?domain=calendar.google.com&sz=32', icon:'📅', shortcuts:[] },
+  drive:    { title:'Google Drive',    url:'https://drive.google.com',          favicon:'https://www.google.com/s2/favicons?domain=drive.google.com&sz=32',    icon:'📁', shortcuts:[] },
+  youtube:  { title:'YouTube',         url:'https://www.youtube.com',           favicon:'https://www.google.com/s2/favicons?domain=youtube.com&sz=32',          icon:'▶️', shortcuts:[] },
+  brandon:  { title:'브랜드온',          url:'https://hulkyaya.github.io/brandon/', favicon:'https://www.google.com/s2/favicons?domain=hulkyaya.github.io&sz=32',   icon:'📊', shortcuts:[] },
+};
+
+let currentApp = null;
+let blockedTimer = null;
+
+function setActiveNav(id){
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.rail-btn').forEach(el=>el.classList.remove('active'));
+  if(id==='clock'){
+    document.getElementById('nav-clock')?.classList.add('active');
+    document.querySelectorAll('.rail-btn')[0]?.classList.add('active');
+  } else {
+    document.getElementById('nav-'+id)?.classList.add('active');
+  }
+}
+
+function showView(id){
+  setActiveNav(id);
+  closeFrame();
+}
+
+function openFrame(appId){
+  const app = APPS[appId]; if(!app) return;
+  currentApp = appId;
+  setActiveNav(appId);
+
+  // update header
+  document.getElementById('iframe-favicon').src   = app.favicon;
+  document.getElementById('iframe-title').textContent = app.title;
+  document.getElementById('iframe-newwin').href   = app.url;
+
+  // show panel
+  const panel = document.getElementById('iframe-panel');
+  panel.classList.add('open');
+  panel.classList.toggle('fullscreen', appId === 'brandon');
+
+  // Gmail은 위젯으로, 나머지는 iframe으로
+  if(appId === 'gmail'){
+    // Gmail 위젯 표시
+    document.getElementById('main-iframe').src = '';
+    document.getElementById('iframe-blocked').classList.remove('show');
+    document.getElementById('gmail-widget').classList.add('show');
+    // 로그인되어 있으면 메일 불러오기
+    if(gmailToken){
+      showGmailMailbox();
+      loadGmailMessages();
+    } else {
+      showGmailLogin();
+    }
+    return;
+  }
+
+  // 다른 앱은 기존대로 iframe 처리
+  document.getElementById('gmail-widget').classList.remove('show');
+  const iframe = document.getElementById('main-iframe');
+  iframe.src = app.url;
+  document.getElementById('iframe-blocked').classList.remove('show');
+
+  // detect if iframe was blocked (X-Frame-Options / CSP)
+  clearTimeout(blockedTimer);
+  blockedTimer = setTimeout(()=>{
+    try {
+      const doc = iframe.contentDocument;
+      if(!doc || !doc.body || doc.body.innerHTML === ''){
+        showBlocked(app);
+      }
+    } catch(e){
+      // cross-origin means it loaded (CORS blocks access, but page IS there)
+    }
+  }, 3500);
+
+  iframe.onload = () => {
+    clearTimeout(blockedTimer);
+    try {
+      const doc = iframe.contentDocument;
+      if(doc && doc.body && doc.body.innerHTML === '') showBlocked(app);
+    } catch(e){ /* loaded cross-origin – fine */ }
+  };
+}
+
+function showBlocked(app){
+  document.getElementById('blocked-icon').textContent = app.icon;
+  document.getElementById('blocked-title').textContent = app.title;
+  document.getElementById('blocked-open').href = app.url;
+  const sc = document.getElementById('blocked-shortcuts');
+  sc.innerHTML = app.shortcuts.map(s=>`<a class="iframe-sc" href="${s.u}" target="_blank">${s.l}</a>`).join('');
+  document.getElementById('iframe-blocked').classList.add('show');
+}
+
+function closeFrame(){
+  const panel = document.getElementById('iframe-panel');
+  panel.classList.remove('open');
+  panel.classList.remove('fullscreen');
+  clearTimeout(blockedTimer);
+  setTimeout(()=>{ document.getElementById('main-iframe').src=''; },400);
+  document.getElementById('gmail-widget').classList.remove('show');
+  currentApp = null;
+  setActiveNav('clock');
+}
+
+/* ══════════════════════════════
+   GMAIL API
+══════════════════════════════ */
+// ⚠️ 본인 Google Cloud Console에서 발급받은 Client ID를 여기에 넣으세요
+const GOOGLE_CLIENT_ID = '511303486369-q8aio4v6pnuo1boh4np4mjffghi19ebo.apps.googleusercontent.com';
+const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
+
+let gmailToken = null;
+let gmailTokenClient = null;
+let gapiReady = false;
+let gisReady = false;
+let gmailUserEmail = null;
+
+// Google API Client (gapi) 초기화
+function gapiLoaded(){
+  gapi.load('client', async () => {
+    await gapi.client.init({
+      discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest'],
+    });
+    gapiReady = true;
+    checkGmailReady();
+  });
+}
+
+// Google Identity Services 초기화
+function gisLoaded(){
+  gmailTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: GMAIL_SCOPE,
+    callback: (response) => {
+      if(response.error){
+        console.error('Gmail 로그인 실패:', response);
+        showGmailError('로그인에 실패했습니다.', response.error_description || response.error);
+        return;
+      }
+      gmailToken = response.access_token;
+      // 저장 (페이지 새로고침해도 유지)
+      try { sessionStorage.setItem('gmail_token', gmailToken); } catch(e){}
+      showGmailMailbox();
+      loadGmailMessages();
+    },
+  });
+  gisReady = true;
+  checkGmailReady();
+}
+
+function checkGmailReady(){
+  if(gapiReady && gisReady){
+    const btn = document.getElementById('gmail-login-btn');
+    const txt = document.getElementById('gmail-login-btn-text');
+    btn.disabled = false;
+    txt.textContent = 'Google 계정으로 로그인';
+
+    // 이전 세션 토큰이 있으면 자동 복원
+    try {
+      const saved = sessionStorage.getItem('gmail_token');
+      if(saved){
+        gmailToken = saved;
+        // 현재 Gmail 화면이 열려있으면 자동 로드
+        if(currentApp === 'gmail'){
+          showGmailMailbox();
+          loadGmailMessages();
+        }
+      }
+    } catch(e){}
+  }
+}
+
+function handleGmailLogin(){
+  if(!gmailTokenClient){
+    alert('Google 라이브러리가 아직 로드되지 않았습니다. 잠시 후 다시 시도하세요.');
+    return;
+  }
+  gmailTokenClient.requestAccessToken({prompt: 'consent'});
+}
+
+function handleGmailLogout(){
+  if(gmailToken){
+    google.accounts.oauth2.revoke(gmailToken, () => {});
+  }
+  gmailToken = null;
+  gmailUserEmail = null;
+  try { sessionStorage.removeItem('gmail_token'); } catch(e){}
+  showGmailLogin();
+}
+
+function showGmailLogin(){
+  document.getElementById('gmail-login').style.display = 'flex';
+  document.getElementById('gmail-mailbox').classList.remove('show');
+}
+
+function showGmailMailbox(){
+  document.getElementById('gmail-login').style.display = 'none';
+  document.getElementById('gmail-mailbox').classList.add('show');
+}
+
+async function loadGmailMessages(){
+  if(!gmailToken){ showGmailLogin(); return; }
+
+  const listEl = document.getElementById('gmail-list');
+  listEl.innerHTML = '<div class="gmail-loading">메일 불러오는 중...</div>';
+
+  gapi.client.setToken({access_token: gmailToken});
+
+  try {
+    // 사용자 프로필 (이메일 주소)
+    if(!gmailUserEmail){
+      const profile = await gapi.client.gmail.users.getProfile({userId: 'me'});
+      gmailUserEmail = profile.result.emailAddress;
+      document.getElementById('gmail-email').textContent = gmailUserEmail;
+      document.getElementById('gmail-avatar').textContent =
+        (gmailUserEmail[0] || '?').toUpperCase();
+    }
+
+    // 받은편지함 최근 메일 15개
+    const listRes = await gapi.client.gmail.users.messages.list({
+      userId: 'me',
+      labelIds: ['INBOX'],
+      maxResults: 15,
+    });
+
+    if(!listRes.result.messages || listRes.result.messages.length === 0){
+      listEl.innerHTML = '<div class="gmail-loading">받은편지함이 비어있어요.</div>';
+      return;
+    }
+
+    // 각 메일 상세 정보 (제목, 발신자, 날짜) 병렬로 가져오기
+    const detailPromises = listRes.result.messages.map(m =>
+      gapi.client.gmail.users.messages.get({
+        userId: 'me',
+        id: m.id,
+        format: 'metadata',
+        metadataHeaders: ['From', 'Subject', 'Date'],
+      })
+    );
+
+    const details = await Promise.all(detailPromises);
+
+    // 렌더링
+    listEl.innerHTML = details.map(d => {
+      const msg = d.result;
+      const headers = {};
+      (msg.payload?.headers || []).forEach(h => { headers[h.name] = h.value; });
+
+      const isUnread = (msg.labelIds || []).includes('UNREAD');
+      const from = parseFromHeader(headers.From || '');
+      const subject = headers.Subject || '(제목 없음)';
+      const date = formatGmailDate(headers.Date);
+      const snippet = msg.snippet || '';
+
+      return `
+        <div class="gmail-item ${isUnread ? 'unread' : ''}" onclick="openMessageInGmail('${msg.id}')">
+          <div class="gmail-meta">
+            <div class="gmail-row1">
+              <div class="gmail-sender">${escapeHTML(from)}</div>
+              <div class="gmail-date">${date}</div>
+            </div>
+            <div class="gmail-subject">${escapeHTML(subject)}</div>
+            <div class="gmail-snippet">${escapeHTML(snippet)}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  } catch(err){
+    console.error('Gmail 로드 실패:', err);
+    // 토큰 만료 등의 경우
+    if(err.status === 401 || err.result?.error?.code === 401){
+      gmailToken = null;
+      try { sessionStorage.removeItem('gmail_token'); } catch(e){}
+      showGmailLogin();
+      const btn = document.getElementById('gmail-login-btn-text');
+      btn.textContent = '다시 로그인';
+    } else {
+      showGmailError('메일을 불러올 수 없어요.', err.result?.error?.message || err.message || '');
+    }
+  }
+}
+
+function showGmailError(title, desc){
+  const listEl = document.getElementById('gmail-list');
+  listEl.innerHTML = `
+    <div class="gmail-error">
+      <div class="gmail-error-icon">⚠️</div>
+      <div class="gmail-error-title">${escapeHTML(title)}</div>
+      <div class="gmail-error-desc">${escapeHTML(desc)}</div>
+    </div>
+  `;
+}
+
+function openMessageInGmail(msgId){
+  // Gmail에서 해당 메일 열기 (새 탭)
+  window.open(`https://mail.google.com/mail/u/0/#inbox/${msgId}`, '_blank');
+}
+
+// From 헤더에서 이름만 추출 ("홍길동" <hong@example.com> → 홍길동)
+function parseFromHeader(from){
+  const match = from.match(/^"?([^"<]+?)"?\s*</);
+  if(match) return match[1].trim();
+  // 이름이 없으면 이메일 주소
+  return from.split('@')[0] || from;
+}
+
+// 날짜 포맷 (오늘이면 시간, 아니면 날짜)
+function formatGmailDate(dateStr){
+  if(!dateStr) return '';
+  const d = new Date(dateStr);
+  if(isNaN(d.getTime())) return '';
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  if(sameDay){
+    return pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  const sameYear = d.getFullYear() === now.getFullYear();
+  if(sameYear){
+    return (d.getMonth()+1) + '월 ' + d.getDate() + '일';
+  }
+  return d.getFullYear() + '.' + (d.getMonth()+1) + '.' + d.getDate();
+}
+
+function escapeHTML(s){
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+// 페이지 로드 시 Google 라이브러리 초기화
+window.addEventListener('load', () => {
+  if(typeof gapi !== 'undefined') gapiLoaded();
+  if(typeof google !== 'undefined' && google.accounts) gisLoaded();
+});
+</script>
+</body>
+</html>
