@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>대시보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=Noto+Sans+KR:wght@300;400&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f7f5f0;
+  --surface: rgba(255,255,255,0.82);
+  --border: rgba(0,0,0,0.07);
+  --text: #1a1916;
+  --text2: #8a8070;
+  --text3: #c0b8a8;
+  --accent: #c8956a;
+  --rail: 56px;
+  --sidebar-w: 220px;
+  --panel-w: 0px;
+}
+
+html, body { width: 100%; height: 100%; overflow: hidden; }
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  display: flex;
+}
+
+.bg-canvas {
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 70% 60% at 15% 15%, rgba(210,190,160,0.26) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 70% at 85% 85%, rgba(160,190,215,0.2) 0%, transparent 65%),
+    #f7f5f0;
+}
+
+/* ══════════════════════════════
+   SIDEBAR
+══════════════════════════════ */
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: var(--rail);
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid var(--border);
+  z-index: 100;
+  transition: width 0.38s cubic-bezier(0.16,1,0.3,1);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.sidebar.expanded { width: calc(var(--rail) + var(--sidebar-w)); }
+.sidebar.pinned   { width: calc(var(--rail) + var(--sidebar-w)); }
+
+/* hover expand only when not pinned */
+.sidebar:not(.pinned):hover { width: calc(var(--rail) + var(--sidebar-w)); }
+
+/* Rail */
+.rail {
+  width: var(--rail);
+  flex-shrink: 0;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 20px 0; gap: 4px;
+  position: absolute; top: 0; left: 0; bottom: 0;
+}
+
+.rail-logo {
+  width: 32px; height: 32px; border-radius: 9px;
+  background: var(--text);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px; flex-shrink: 0;
+}
+.rail-logo svg { width: 15px; height: 15px; fill: #f7f5f0; }
+
+.rail-btn {
+  width: 34px; height: 34px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text3); cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border: none; background: transparent;
+  flex-shrink: 0;
+}
+.rail-btn:hover { background: rgba(0,0,0,0.05); color: var(--text); }
+.rail-btn.active { color: var(--accent); }
+.rail-btn svg { width: 17px; height: 17px; pointer-events: none; }
+
+.rail-divider { width: 20px; height: 1px; background: var(--border); margin: 8px 0; }
+
+/* Pin button at bottom of rail */
+.rail-pin {
+  margin-top: auto;
+  width: 34px; height: 34px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text3); cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.25s;
+  border: none; background: transparent;
+  margin-bottom: 4px;
+}
+.rail-pin:hover { background: rgba(0,0,0,0.05); color: var(--text); }
+.rail-pin.pinned { color: var(--accent); transform: rotate(45deg); }
+.rail-pin svg { width: 16px; height: 16px; }
+
+/* Sidebar content panel */
+.sidebar-panel {
+  position: absolute; top: 0; left: var(--rail); bottom: 0;
+  width: var(--sidebar-w);
+  padding: 20px 16px;
+  display: flex; flex-direction: column;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.sidebar.expanded .sidebar-panel,
+.sidebar.pinned .sidebar-panel,
+.sidebar:not(.pinned):hover .sidebar-panel {
+  opacity: 1; pointer-events: all;
+}
+
+.sidebar-title {
+  font-size: 12px; font-weight: 400; letter-spacing: 0.08em;
+  color: var(--text); margin-bottom: 24px; white-space: nowrap;
+  padding-left: 4px;
+}
+
+.nav-label {
+  font-size: 9.5px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--text3); margin: 0 0 6px 4px;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: 9px;
+  cursor: pointer; color: var(--text2); font-size: 12.5px;
+  transition: background 0.13s, color 0.13s;
+  margin-bottom: 1px; white-space: nowrap;
+  border: none; background: transparent; text-decoration: none;
+  font-family: 'Noto Sans KR', sans-serif;
+  width: 100%; text-align: left;
+}
+.nav-item:hover { background: rgba(0,0,0,0.04); color: var(--text); }
+.nav-item.active { background: rgba(200,149,106,0.1); color: var(--accent); }
+.nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+.nav-divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+/* ══════════════════════════════
+   LAYOUT SHELL
+══════════════════════════════ */
+.shell {
+  display: flex;
+  flex: 1;
+  margin-left: var(--rail);
+  height: 100vh;
+  position: relative; z-index: 10;
+  transition: margin-left 0.38s cubic-bezier(0.16,1,0.3,1);
+}
+body.sidebar-pinned .shell { margin-left: calc(var(--rail) + var(--sidebar-w)); }
+
+/* ══════════════════════════════
+   CLOCK VIEW
+══════════════════════════════ */
+.view {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  min-width: 0;
+  transition: flex 0.38s cubic-bezier(0.16,1,0.3,1);
+}
+
+.clock-stage {
+  text-align: center; user-select: none;
+  animation: fadeUp 1.1s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.clock-day {
+  font-size: 11px; letter-spacing: 0.42em;
+  color: var(--text3); text-transform: uppercase; font-weight: 300;
+  margin-bottom: 16px;
+}
+.clock-time {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(64px, 12vw, 160px);
+  font-weight: 400; color: var(--text);
+  letter-spacing: -0.02em; line-height: 1;
+  position: relative; display: inline-block;
+}
+.clock-sep {
+  color: var(--text3);
+  animation: blink 2s ease-in-out infinite;
+}
+@keyframes blink {
+  0%,44%  { opacity: 1; }
+  50%,94% { opacity: 0.15; }
+  100%    { opacity: 1; }
+}
+.clock-sec {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(24px, 4vw, 52px);
+  color: var(--text3); vertical-align: super;
+  margin-left: 4px;
+}
+.meridiem {
+  position: absolute; top: 6px;
+  right: clamp(-44px, -4.5vw, -28px);
+  font-size: clamp(9px, 1.1vw, 13px);
+  letter-spacing: 0.2em; color: var(--text3);
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 300;
+}
+.clock-date {
+  margin-top: 14px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+}
+.clock-date-part { font-size: 13px; color: var(--text2); letter-spacing: 0.1em; font-weight: 300; }
+.clock-date-dot  { width: 3px; height: 3px; border-radius: 50%; background: var(--text3); }
+
+.progress-wrap { margin-top: 36px; display: flex; flex-direction: column; align-items: center; gap: 7px; }
+.progress-track {
+  width: clamp(160px, 24vw, 320px); height: 1px;
+  background: rgba(0,0,0,0.08); position: relative; border-radius: 99px;
+}
+.progress-fill {
+  position: absolute; top: 0; left: 0; height: 100%;
+  background: linear-gradient(90deg, var(--accent), #e0b898);
+  border-radius: 99px; transition: width 1s linear;
+}
+.progress-dot {
+  position: absolute; top: -3px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(200,149,106,0.18);
+  transition: left 1s linear; transform: translateX(-50%);
+}
+.progress-info {
+  width: clamp(160px, 24vw, 320px);
+  display: flex; justify-content: space-between;
+}
+.progress-lbl { font-size: 9.5px; letter-spacing: 0.2em; color: var(--text3); text-transform: uppercase; }
+.progress-pct { font-size: 10.5px; color: var(--accent); }
+
+/* ══════════════════════════════
+   IFRAME PANEL
+══════════════════════════════ */
+.iframe-panel {
+  width: 0; flex-shrink: 0;
+  height: 100vh;
+  border-left: 1px solid transparent;
+  transition: width 0.42s cubic-bezier(0.16,1,0.3,1), border-color 0.3s;
+  overflow: hidden;
+  position: relative;
+  background: #fff;
+}
+.iframe-panel.open {
+  width: min(560px, 52vw);
+  border-left-color: var(--border);
+}
+.iframe-panel.open.fullscreen {
+  width: 100%;
+}
+
+.iframe-panel iframe {
+  width: 100%; height: 100%;
+  border: none; display: block;
+}
+
+.iframe-header {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 44px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 12px; gap: 8px;
+  z-index: 10;
+}
+.iframe-favicon { width: 16px; height: 16px; flex-shrink: 0; }
+.iframe-title { font-size: 12.5px; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.iframe-actions { display: flex; gap: 4px; }
+.iframe-btn {
+  width: 28px; height: 28px; border-radius: 7px;
+  border: 1px solid var(--border); background: transparent;
+  cursor: pointer; color: var(--text2); font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.13s;
+}
+.iframe-btn:hover { background: rgba(0,0,0,0.05); color: var(--text); }
+.iframe-btn svg { width: 13px; height: 13px; }
+
+.iframe-body {
+  position: absolute; top: 44px; left: 0; right: 0; bottom: 0;
+}
+.iframe-body iframe { width: 100%; height: 100%; border: none; }
+
+/* Blocked notice */
+.iframe-blocked {
+  position: absolute; inset: 44px 0 0;
+  display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 32px; text-align: center;
+  background: #fff;
+}
+.iframe-blocked.show { display: flex; }
+.iframe-blocked-icon { font-size: 36px; }
+.iframe-blocked-title { font-size: 15px; color: var(--text); }
+.iframe-blocked-desc { font-size: 12.5px; color: var(--text2); line-height: 1.65; max-width: 280px; }
+.iframe-open-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 20px; border-radius: 10px;
+  background: var(--text); color: #f7f5f0;
+  font-size: 12.5px; text-decoration: none;
+  transition: opacity 0.15s;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.iframe-open-btn:hover { opacity: 0.82; }
+
+.iframe-shortcuts { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin-top: 4px; }
+.iframe-sc {
+  padding: 7px 14px; border-radius: 9px;
+  border: 1px solid var(--border); font-size: 12px;
+  color: var(--text2); text-decoration: none;
+  transition: background 0.12s, color 0.12s;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.iframe-sc:hover { background: rgba(0,0,0,0.04); color: var(--text); }
+
+/* ══════════════════════════════
+   GMAIL WIDGET
+══════════════════════════════ */
+.gmail-widget {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  background: #fff;
+}
+.gmail-widget.show { display: flex; }
+
+.gmail-login {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px; padding: 40px;
+}
+.gmail-login-icon { font-size: 48px; }
+.gmail-login-title { font-size: 16px; color: var(--text); font-weight: 500; }
+.gmail-login-desc { font-size: 13px; color: var(--text2); text-align: center; max-width: 320px; line-height: 1.6; }
+.gmail-login-btn {
+  margin-top: 8px;
+  padding: 10px 22px;
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif;
+  display: flex; align-items: center; gap: 10px;
+}
+.gmail-login-btn:hover { background: #1557b0; }
+.gmail-login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.gmail-mailbox {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+}
+.gmail-mailbox.show { display: flex; }
+
+.gmail-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: #fafaf8;
+}
+.gmail-userinfo { display: flex; align-items: center; gap: 10px; }
+.gmail-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #c8956a; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 500;
+}
+.gmail-email { font-size: 12px; color: var(--text); font-weight: 500; }
+.gmail-actions { display: flex; gap: 4px; }
+.gmail-tool-btn {
+  background: transparent; border: none;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  color: var(--text2);
+  cursor: pointer;
+  border-radius: 6px;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.gmail-tool-btn:hover { background: rgba(0,0,0,0.05); color: var(--text); }
+
+.gmail-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+.gmail-item {
+  display: flex; gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.gmail-item:hover { background: #f8f6f1; }
+.gmail-item.unread { background: rgba(200,149,106,0.04); }
+.gmail-item.unread .gmail-sender,
+.gmail-item.unread .gmail-subject { font-weight: 500; color: var(--text); }
+
+.gmail-meta { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 3px; }
+.gmail-row1 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.gmail-sender {
+  font-size: 12.5px;
+  color: var(--text);
+  font-weight: 400;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 180px;
+}
+.gmail-date { font-size: 11px; color: var(--text3); white-space: nowrap; flex-shrink: 0; }
+.gmail-subject {
+  font-size: 12.5px;
+  color: var(--text2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gmail-snippet {
+  font-size: 11.5px;
+  color: var(--text3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.gmail-loading {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2); font-size: 13px;
+}
+.gmail-error {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px; padding: 30px;
+  text-align: center;
+}
+.gmail-error-icon { font-size: 36px; }
+.gmail-error-title { font-size: 14px; color: var(--text); font-weight: 500; }
+.gmail-error-desc { font-size: 12px; color: var(--text2); line-height: 1.6; max-width: 320px; }
+
+/* ══════════════════════════════
+   상품 제안서
+══════════════════════════════ */
+.proposal-view {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  padding: 48px 40px;
+  gap: 32px;
+}
+.proposal-view.active { display: flex; }
+
+.proposal-header {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.proposal-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px; font-weight: 500;
+  color: var(--text);
+}
+.proposal-header p { font-size: 13px; color: var(--text2); }
+
+/* 업로드 존 */
+.proposal-upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  padding: 48px 24px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: rgba(255,255,255,0.5);
+}
+.proposal-upload-zone:hover {
+  border-color: var(--accent);
+  background: rgba(200,149,106,0.05);
+}
+.proposal-upload-zone svg { color: var(--text3); }
+.proposal-upload-zone .uz-title { font-size: 15px; color: var(--text); font-weight: 500; }
+.proposal-upload-zone .uz-sub { font-size: 12px; color: var(--text2); }
+.proposal-upload-zone input { display: none; }
+
+/* 미리보기 이미지 */
+.proposal-preview-img {
+  display: none;
+  width: 100%; max-height: 320px;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: white;
+}
+
+/* 분석 중 */
+.proposal-analyzing {
+  display: none;
+  flex-direction: column; align-items: center; gap: 12px;
+  padding: 32px;
+}
+.proposal-analyzing.show { display: flex; }
+.proposal-spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.proposal-analyzing p { font-size: 13px; color: var(--text2); }
+
+/* 편집 폼 */
+.proposal-form {
+  display: none;
+  flex-direction: column; gap: 16px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+}
+.proposal-form.show { display: flex; }
+.proposal-form h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px; color: var(--text);
+  margin-bottom: 4px;
+}
+.pf-row { display: flex; flex-direction: column; gap: 6px; }
+.pf-row label { font-size: 12px; color: var(--text2); font-weight: 500; letter-spacing: 0.04em; }
+.pf-row input, .pf-row textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 13px;
+  color: var(--text);
+  background: rgba(255,255,255,0.8);
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+.pf-row input:focus, .pf-row textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.pf-row textarea { min-height: 110px; line-height: 1.6; }
+
+.proposal-actions {
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.btn-analyze {
+  padding: 11px 22px;
+  background: var(--accent);
+  color: white; border: none;
+  border-radius: 8px; font-size: 13px;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer; font-weight: 500;
+  transition: opacity 0.2s;
+}
+.btn-analyze:hover { opacity: 0.85; }
+.btn-analyze:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-reset {
+  padding: 11px 22px;
+  background: transparent;
+  color: var(--text2); border: 1px solid var(--border);
+  border-radius: 8px; font-size: 13px;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.btn-reset:hover { border-color: var(--text2); }
+.btn-pdf {
+  padding: 11px 22px;
+  background: #1a1916;
+  color: white; border: none;
+  border-radius: 8px; font-size: 13px;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer; font-weight: 500;
+  transition: opacity 0.2s;
+}
+.btn-pdf:hover { opacity: 0.8; }
+</style>
+</head>
+<body>
+
+<div class="bg-canvas"></div>
+
+<!-- ── SIDEBAR ── -->
+<nav class="sidebar" id="sidebar">
+  <!-- Rail (always visible) -->
+  <div class="rail">
+    <div class="rail-logo">
+      <svg viewBox="0 0 16 16"><path d="M8 2L2 6v8h4v-4h4v4h4V6L8 2z"/></svg>
+    </div>
+
+    <button class="rail-btn active" title="시계" onclick="showView('clock')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </button>
+
+
+    <div class="rail-divider"></div>
+
+
+    <button class="rail-btn" title="브랜드온" onclick="openFrame('brandon')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+    </button>
+    <button class="rail-btn" title="상품 제안서" onclick="showView('proposal')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+    </button>
+
+    <!-- Pin -->
+    <button class="rail-pin" id="pin-btn" title="사이드바 고정" onclick="togglePin()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>
+    </button>
+  </div>
+
+  <!-- Expanded panel -->
+  <div class="sidebar-panel">
+    <div class="sidebar-title">내 대시보드</div>
+
+    <div class="nav-label">홈</div>
+    <button class="nav-item active" id="nav-clock" onclick="showView('clock')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      시계
+    </button>
+
+    <div class="nav-divider"></div>
+    <div class="nav-label">앱</div>
+    <button class="nav-item" id="nav-brandon" onclick="openFrame('brandon')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+      브랜드온
+    </button>
+    <button class="nav-item" id="nav-proposal" onclick="showView('proposal')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+      상품 제안서
+    </button>
+  </div>
+</nav>
+
+<!-- ── SHELL ── -->
+<div class="shell" id="shell">
+
+  <!-- Clock view -->
+  <div class="view" id="view-clock">
+    <div class="clock-stage">
+      <div class="clock-day" id="clock-day">—</div>
+      <div class="clock-time">
+        <span id="time-hm">00:00</span><span class="clock-sep">:</span><span class="clock-sec" id="time-s">00</span>
+        <span class="meridiem" id="meridiem">AM</span>
+      </div>
+      <div class="clock-date">
+        <span class="clock-date-part" id="d-year">2025</span>
+        <div class="clock-date-dot"></div>
+        <span class="clock-date-part" id="d-month">1월</span>
+        <div class="clock-date-dot"></div>
+        <span class="clock-date-part" id="d-day">1일</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-track">
+          <div class="progress-fill" id="pfill" style="width:0%"></div>
+          <div class="progress-dot"  id="pdot"  style="left:0%"></div>
+        </div>
+        <div class="progress-info">
+          <span class="progress-lbl">00:00</span>
+          <span class="progress-pct" id="ppct">0%</span>
+          <span class="progress-lbl">24:00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- iframe panel -->
+  <div class="iframe-panel" id="iframe-panel">
+    <div class="iframe-header">
+      <img class="iframe-favicon" id="iframe-favicon" src="" alt="" />
+      <span class="iframe-title" id="iframe-title">—</span>
+      <div class="iframe-actions">
+        <a class="iframe-btn" id="iframe-newwin" href="#" target="_blank" title="새 탭으로 열기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+        <button class="iframe-btn" title="닫기" onclick="closeFrame()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="iframe-body">
+      <iframe id="main-iframe" src="" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>
+    </div>
+    <!-- Shown when site blocks iframe -->
+    <div class="iframe-blocked" id="iframe-blocked">
+      <div class="iframe-blocked-icon" id="blocked-icon">📬</div>
+      <div class="iframe-blocked-title" id="blocked-title">Gmail</div>
+      <div class="iframe-blocked-desc">보안 정책으로 인해 직접 임베드가 차단됩니다.<br>아래 버튼으로 새 탭에서 바로 열거나 바로가기를 이용하세요.</div>
+      <a class="iframe-open-btn" id="blocked-open" href="#" target="_blank">새 탭에서 열기 ↗</a>
+      <div class="iframe-shortcuts" id="blocked-shortcuts"></div>
+    </div>
+
+
+  </div>
+
+  <!-- 상품 제안서 view -->
+  <div class="proposal-view" id="view-proposal">
+    <div class="proposal-header">
+      <h2>상품 제안서 생성</h2>
+      <p>상세페이지 이미지를 업로드하면 AI가 분석해서 제안서를 만들어드려요</p>
+    </div>
+
+    <div class="proposal-upload-zone" id="upload-zone" onclick="document.getElementById('img-input').click()">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      <div class="uz-title">이미지를 클릭하거나 드래그해서 업로드</div>
+      <div class="uz-sub">JPG, PNG, WEBP 지원</div>
+      <input type="file" id="img-input" accept="image/*" onchange="handleImageUpload(event)" />
+    </div>
+
+    <img class="proposal-preview-img" id="preview-img" alt="미리보기" />
+
+    <div class="proposal-actions" id="analyze-actions" style="display:none">
+      <button class="btn-analyze" id="btn-analyze" onclick="analyzeImage()">✨ AI 분석하기</button>
+      <button class="btn-reset" onclick="resetProposal()">다시 선택</button>
+    </div>
+
+    <div class="proposal-analyzing" id="proposal-analyzing">
+      <div class="proposal-spinner"></div>
+      <p>이미지 분석 중... 잠시만 기다려주세요</p>
+    </div>
+
+    <div class="proposal-form" id="proposal-form">
+      <h3>내용 확인 및 수정</h3>
+      <div class="pf-row">
+        <label>제품명</label>
+        <input type="text" id="pf-name" placeholder="제품명" />
+      </div>
+      <div class="pf-row">
+        <label>색상</label>
+        <input type="text" id="pf-color" placeholder="예: 화이트, 블랙" />
+      </div>
+      <div class="pf-row">
+        <label>크기</label>
+        <input type="text" id="pf-size" placeholder="예: 283 x 290 x 347 (mm)" />
+      </div>
+      <div class="pf-row">
+        <label>특징 (줄바꿈으로 구분)</label>
+        <textarea id="pf-features" placeholder="특징 1&#10;특징 2&#10;특징 3"></textarea>
+      </div>
+      <div class="pf-row">
+        <label>판매가</label>
+        <input type="text" id="pf-price" placeholder="예: 139,000원" />
+      </div>
+      <div class="proposal-actions">
+        <button class="btn-pdf" onclick="generatePDF()">📄 PDF 다운로드</button>
+        <button class="btn-reset" onclick="resetProposal()">처음부터</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+
+<script>
+/* ── Clock ── */
+const DAYS   = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+const MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+function pad(n){ return String(n).padStart(2,'0'); }
+function tick(){
+  const n = new Date();
+  const h=n.getHours(), m=n.getMinutes(), s=n.getSeconds();
+  const h12 = h%12||12;
+  document.getElementById('time-hm').textContent = pad(h12)+':'+pad(m);
+  document.getElementById('time-s').textContent  = pad(s);
+  document.getElementById('meridiem').textContent = h<12?'AM':'PM';
+  document.getElementById('clock-day').textContent = DAYS[n.getDay()];
+  document.getElementById('d-year').textContent  = n.getFullYear();
+  document.getElementById('d-month').textContent = MONTHS[n.getMonth()];
+  document.getElementById('d-day').textContent   = n.getDate()+'일';
+  const pct = (( h*3600+m*60+s)/86400*100).toFixed(1);
+  document.getElementById('pfill').style.width = pct+'%';
+  document.getElementById('pdot').style.left   = pct+'%';
+  document.getElementById('ppct').textContent  = pct+'%';
+}
+setInterval(tick,1000); tick();
+
+/* ── Sidebar pin ── */
+let pinned = false;
+function togglePin(){
+  pinned = !pinned;
+  document.getElementById('sidebar').classList.toggle('pinned', pinned);
+  document.getElementById('pin-btn').classList.toggle('pinned', pinned);
+  document.body.classList.toggle('sidebar-pinned', pinned);
+}
+
+/* ── Frame apps ── */
+const APPS = {
+  gmail:    { title:'Gmail',           url:'https://mail.google.com',           favicon:'https://www.google.com/s2/favicons?domain=mail.google.com&sz=32',    icon:'📬', shortcuts:[{l:'받은편지함',u:'https://mail.google.com/mail/u/0/#inbox'},{l:'중요편지함',u:'https://mail.google.com/mail/u/0/#starred'},{l:'보낸편지함',u:'https://mail.google.com/mail/u/0/#sent'},{l:'메일 쓰기',u:'https://mail.google.com/mail/?view=cm'}] },
+  calendar: { title:'Google 캘린더',   url:'https://calendar.google.com',       favicon:'https://www.google.com/s2/favicons?domain=calendar.google.com&sz=32', icon:'📅', shortcuts:[] },
+  drive:    { title:'Google Drive',    url:'https://drive.google.com',          favicon:'https://www.google.com/s2/favicons?domain=drive.google.com&sz=32',    icon:'📁', shortcuts:[] },
+  youtube:  { title:'YouTube',         url:'https://www.youtube.com',           favicon:'https://www.google.com/s2/favicons?domain=youtube.com&sz=32',          icon:'▶️', shortcuts:[] },
+  brandon:  { title:'브랜드온',          url:'https://hulkyaya.github.io/brandon/', favicon:'https://www.google.com/s2/favicons?domain=hulkyaya.github.io&sz=32',   icon:'📊', shortcuts:[] },
+};
+
+let currentApp = null;
+let blockedTimer = null;
+
+function setActiveNav(id){
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.rail-btn').forEach(el=>el.classList.remove('active'));
+  if(id==='clock'){
+    document.getElementById('nav-clock')?.classList.add('active');
+    document.querySelectorAll('.rail-btn')[0]?.classList.add('active');
+  } else {
+    document.getElementById('nav-'+id)?.classList.add('active');
+  }
+}
+
+function showView(id){
+  setActiveNav(id);
+  closeFrame();
+  // 모든 뷰 숨기기
+  document.querySelectorAll('.proposal-view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-clock').style.display = 'none';
+  if(id === 'clock'){
+    document.getElementById('view-clock').style.display = '';
+  } else if(id === 'proposal'){
+    document.getElementById('view-proposal').classList.add('active');
+  }
+}
+
+function openFrame(appId){
+  const app = APPS[appId]; if(!app) return;
+  currentApp = appId;
+  setActiveNav(appId);
+
+  // update header
+  document.getElementById('iframe-favicon').src   = app.favicon;
+  document.getElementById('iframe-title').textContent = app.title;
+  document.getElementById('iframe-newwin').href   = app.url;
+
+  // show panel
+  const panel = document.getElementById('iframe-panel');
+  panel.classList.add('open');
+  panel.classList.toggle('fullscreen', appId === 'brandon');
+
+  // 다른 앱은 기존대로 iframe 처리
+  document.getElementById('gmail-widget')?.classList.remove('show');
+  const iframe = document.getElementById('main-iframe');
+  iframe.src = app.url;
+  document.getElementById('iframe-blocked').classList.remove('show');
+
+  // detect if iframe was blocked (X-Frame-Options / CSP)
+  clearTimeout(blockedTimer);
+  blockedTimer = setTimeout(()=>{
+    try {
+      const doc = iframe.contentDocument;
+      if(!doc || !doc.body || doc.body.innerHTML === ''){
+        showBlocked(app);
+      }
+    } catch(e){
+      // cross-origin means it loaded (CORS blocks access, but page IS there)
+    }
+  }, 3500);
+
+  iframe.onload = () => {
+    clearTimeout(blockedTimer);
+    try {
+      const doc = iframe.contentDocument;
+      if(doc && doc.body && doc.body.innerHTML === '') showBlocked(app);
+    } catch(e){ /* loaded cross-origin – fine */ }
+  };
+}
+
+function showBlocked(app){
+  document.getElementById('blocked-icon').textContent = app.icon;
+  document.getElementById('blocked-title').textContent = app.title;
+  document.getElementById('blocked-open').href = app.url;
+  const sc = document.getElementById('blocked-shortcuts');
+  sc.innerHTML = app.shortcuts.map(s=>`<a class="iframe-sc" href="${s.u}" target="_blank">${s.l}</a>`).join('');
+  document.getElementById('iframe-blocked').classList.add('show');
+}
+
+function closeFrame(){
+  const panel = document.getElementById('iframe-panel');
+  panel.classList.remove('open');
+  panel.classList.remove('fullscreen');
+  clearTimeout(blockedTimer);
+  setTimeout(()=>{ document.getElementById('main-iframe').src=''; },400);
+  currentApp = null;
+  setActiveNav('clock');
+}
+
+/* ══════════════════════════════
+   상품 제안서
+══════════════════════════════ */
+let proposalImageBase64 = null;
+let proposalImageType = 'image/jpeg';
+
+// 드래그앤드롭
+const uploadZone = document.getElementById('upload-zone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.style.borderColor = 'var(--accent)'; });
+uploadZone.addEventListener('dragleave', () => { uploadZone.style.borderColor = ''; });
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.style.borderColor = '';
+  const file = e.dataTransfer.files[0];
+  if(file && file.type.startsWith('image/')) processImageFile(file);
+});
+
+function handleImageUpload(event){
+  const file = event.target.files[0];
+  if(file) processImageFile(file);
+}
+
+function processImageFile(file){
+  proposalImageType = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    proposalImageBase64 = dataUrl.split(',')[1];
+    // 미리보기
+    const img = document.getElementById('preview-img');
+    img.src = dataUrl;
+    img.style.display = 'block';
+    document.getElementById('upload-zone').style.display = 'none';
+    document.getElementById('analyze-actions').style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function analyzeImage(){
+  if(!proposalImageBase64) return;
+  document.getElementById('analyze-actions').style.display = 'none';
+  document.getElementById('proposal-analyzing').classList.add('show');
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: `당신은 상품 상세페이지 이미지를 분석해서 제안서에 필요한 정보를 추출하는 전문가입니다.
+반드시 아래 JSON 형식만 반환하세요. 다른 텍스트나 마크다운 없이 JSON만:
+{"name":"제품명","color":"색상","size":"크기","features":["특징1","특징2","특징3"],"price":"판매가"}
+정보가 이미지에 없으면 빈 문자열("")로 두세요. features는 배열로 반환하세요.`,
+        messages: [{
+          role: 'user',
+          content: [{
+            type: 'image',
+            source: { type: 'base64', media_type: proposalImageType, data: proposalImageBase64 }
+          }, {
+            type: 'text',
+            text: '이 상품 상세페이지에서 제품명, 색상, 크기, 주요 특징들, 판매가를 추출해주세요.'
+          }]
+        }]
+      })
+    });
+
+    const data = await response.json();
+    const text = data.content?.map(c => c.text || '').join('').trim();
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    document.getElementById('pf-name').value = parsed.name || '';
+    document.getElementById('pf-color').value = parsed.color || '';
+    document.getElementById('pf-size').value = parsed.size || '';
+    document.getElementById('pf-features').value = Array.isArray(parsed.features) ? parsed.features.join('\n') : (parsed.features || '');
+    document.getElementById('pf-price').value = parsed.price || '';
+
+    document.getElementById('proposal-analyzing').classList.remove('show');
+    document.getElementById('proposal-form').classList.add('show');
+
+  } catch(err) {
+    console.error(err);
+    document.getElementById('proposal-analyzing').classList.remove('show');
+    document.getElementById('analyze-actions').style.display = 'flex';
+    alert('분석 중 오류가 발생했어요. 다시 시도해주세요.');
+  }
+}
+
+function generatePDF(){
+  const name     = document.getElementById('pf-name').value.trim() || '—';
+  const color    = document.getElementById('pf-color').value.trim() || '—';
+  const size     = document.getElementById('pf-size').value.trim() || '—';
+  const features = document.getElementById('pf-features').value.trim().split('\n').filter(f=>f.trim());
+  const price    = document.getElementById('pf-price').value.trim() || '—';
+  const imgSrc   = document.getElementById('preview-img').src;
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head>
+<meta charset="UTF-8"/>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Noto Sans KR',sans-serif; background:#fff; width:210mm; margin:0 auto; }
+  @media print { body { margin:0; } @page { margin:15mm; } }
+
+  .cover {
+    background:#c0212b;
+    color:white;
+    padding:48px 40px;
+    min-height:120px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .cover-logo { font-size:32px; font-weight:700; letter-spacing:-1px; }
+  .cover-sub { font-size:13px; opacity:0.75; margin-top:4px; }
+  .cover-title { font-size:18px; font-weight:300; letter-spacing:2px; }
+
+  .body { padding:40px; }
+
+  .product-section {
+    display:flex; gap:32px; align-items:flex-start; margin-bottom:36px;
+  }
+  .product-img {
+    width:220px; min-width:220px;
+    border:1px solid #eee; border-radius:8px;
+    object-fit:contain; background:#fafafa;
+    padding:8px;
+  }
+  .product-info { flex:1; }
+  .info-table { width:100%; border-collapse:collapse; }
+  .info-table caption {
+    text-align:left; font-size:13px; color:#888;
+    padding-bottom:10px; letter-spacing:0.05em;
+  }
+  .info-table th {
+    width:80px; padding:10px 14px;
+    background:#f5f5f5; font-size:12px;
+    color:#555; font-weight:500; text-align:left;
+    border:1px solid #e8e8e8;
+    vertical-align:top;
+  }
+  .info-table td {
+    padding:10px 14px; font-size:13px;
+    color:#222; border:1px solid #e8e8e8;
+    line-height:1.6;
+  }
+  .features-list { list-style:none; }
+  .features-list li::before { content:'· '; color:#c0212b; font-weight:700; }
+
+  .price-row td { font-size:15px; font-weight:700; color:#c0212b; }
+
+  .footer {
+    margin-top:40px; padding-top:16px;
+    border-top:1px solid #eee;
+    display:flex; justify-content:space-between;
+    align-items:center;
+  }
+  .footer-logo { font-size:22px; font-weight:700; color:#c0212b; }
+  .footer-note { font-size:11px; color:#aaa; }
+</style>
+</head><body>
+  <div class="cover">
+    <div>
+      <div class="cover-logo">OA</div>
+      <div class="cover-sub">오아주식회사</div>
+    </div>
+    <div class="cover-title">상품 제안서</div>
+  </div>
+
+  <div class="body">
+    <div class="product-section">
+      <img class="product-img" src="${imgSrc}" alt="제품 이미지" />
+      <div class="product-info">
+        <table class="info-table">
+          <caption>상품 제안서</caption>
+          <tbody>
+            <tr><th>제품명</th><td>${name}</td></tr>
+            <tr><th>색상</th><td>${color}</td></tr>
+            <tr><th>크기</th><td>${size}</td></tr>
+            <tr><th>특징</th><td>
+              <ul class="features-list">
+                ${features.map(f=>`<li>${f}</li>`).join('')}
+              </ul>
+            </td></tr>
+            <tr class="price-row"><th>판매가</th><td>${price}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-logo">OA</div>
+      <div class="footer-note">오아주식회사 · https://store.oa-world.com</div>
+    </div>
+  </div>
+
+<script>window.onload=()=>{ window.print(); }<\/script>
+</body></html>`);
+  win.document.close();
+}
+
+function resetProposal(){
+  proposalImageBase64 = null;
+  document.getElementById('preview-img').style.display = 'none';
+  document.getElementById('preview-img').src = '';
+  document.getElementById('upload-zone').style.display = 'flex';
+  document.getElementById('analyze-actions').style.display = 'none';
+  document.getElementById('proposal-analyzing').classList.remove('show');
+  document.getElementById('proposal-form').classList.remove('show');
+  document.getElementById('img-input').value = '';
+}
+
+// 페이지 로드 시 초기화
+window.addEventListener('load', () => {});
+</script>
+</body>
+</html>
