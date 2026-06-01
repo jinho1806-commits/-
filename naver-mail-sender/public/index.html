@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>메일 보내기</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, 'Segoe UI', 'Malgun Gothic', sans-serif;
+      background: #f4f6f8;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      background: #fff;
+      width: 100%;
+      max-width: 440px;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+      padding: 36px 32px;
+    }
+
+    .title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 28px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 8px;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 16px;
+      border: 1.5px solid #dde2e8;
+      border-radius: 10px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus { border-color: #2db400; }  /* 네이버 그린 */
+
+    button {
+      width: 100%;
+      margin-top: 20px;
+      padding: 15px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      background: #2db400;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover { background: #259900; }
+    button:disabled { background: #b5d8a8; cursor: not-allowed; }
+
+    .result {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.5;
+      display: none;
+    }
+    .result.ok    { display: block; background: #e9f7e4; color: #2a7a17; }
+    .result.error { display: block; background: #fdecec; color: #c0392b; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">📧 메일 보내기</div>
+    <div class="subtitle">받는 사람 이메일을 넣고 버튼을 누르면 자동으로 발송돼요.</div>
+
+    <label for="to">받는 사람 이메일</label>
+    <input id="to" type="email" placeholder="example@naver.com" autocomplete="off" />
+
+    <button id="sendBtn">메일 보내기</button>
+
+    <div id="result" class="result"></div>
+  </div>
+
+  <script>
+    const btn = document.getElementById('sendBtn');
+    const input = document.getElementById('to');
+    const result = document.getElementById('result');
+
+    function showResult(ok, message) {
+      result.className = 'result ' + (ok ? 'ok' : 'error');
+      result.textContent = message;
+    }
+
+    async function send() {
+      const to = input.value.trim();
+      if (!to) {
+        showResult(false, '받는 사람 이메일을 입력하세요.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '보내는 중...';
+
+      try {
+        const res = await fetch('/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: to }),
+        });
+        const data = await res.json();
+        showResult(data.ok, data.message);
+        if (data.ok) input.value = '';
+      } catch (err) {
+        showResult(false, '서버에 연결하지 못했어요: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '메일 보내기';
+      }
+    }
+
+    btn.addEventListener('click', send);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
+  </script>
+</body>
+</html>

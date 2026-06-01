@@ -1,0 +1,15 @@
+{
+  "name": "naver-mail-sender",
+  "version": "1.0.0",
+  "description": "받는 사람 이메일을 입력하면 네이버 메일로 정해진 내용을 보내는 도구",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "nodemailer": "^6.9.13"
+  }
+}

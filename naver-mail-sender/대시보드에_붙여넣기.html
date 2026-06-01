@@ -1,0 +1,67 @@
+<!-- ════════════════════════════════════════════════════════════
+     📬 메일 발송 박스 — 대시보드 HTML 원하는 위치에 통째로 붙여넣으세요.
+     ★ 단 한 곳만 고치면 됩니다:
+       아래 MAIL_SERVER 주소를, Render에 올린 내 메일 서버 주소로 바꾸기.
+     ════════════════════════════════════════════════════════════ -->
+
+<div id="oaMailBox" style="max-width:420px; padding:20px; border:1px solid #e3e6ea;
+     border-radius:14px; font-family:-apple-system,'Malgun Gothic',sans-serif; background:#fff;">
+  <div style="font-size:17px; font-weight:700; margin-bottom:4px;">📬 메일 보내기</div>
+  <div style="font-size:13px; color:#888; margin-bottom:16px;">이메일을 넣고 버튼을 누르면 자동 발송돼요.</div>
+
+  <input id="oaMailTo" type="email" placeholder="example@naver.com"
+     style="width:100%; box-sizing:border-box; padding:12px 14px; font-size:15px;
+            border:1.5px solid #dde2e8; border-radius:9px; outline:none;" />
+
+  <button id="oaMailBtn"
+     style="width:100%; margin-top:12px; padding:13px; font-size:15px; font-weight:700;
+            color:#fff; background:#2db400; border:none; border-radius:9px; cursor:pointer;">
+     메일 보내기
+  </button>
+
+  <div id="oaMailResult" style="margin-top:12px; font-size:13px; line-height:1.5; display:none;"></div>
+</div>
+
+<script>
+(function () {
+  // ★★★ 여기를 Render에 올린 내 메일 서버 주소로 바꾸세요 (끝에 / 빼고) ★★★
+  const MAIL_SERVER = 'https://여기에-내-서버주소.onrender.com';
+
+  const box    = document.getElementById('oaMailBox');
+  const input  = box.querySelector('#oaMailTo');
+  const btn    = box.querySelector('#oaMailBtn');
+  const result = box.querySelector('#oaMailResult');
+
+  function show(ok, msg) {
+    result.style.display = 'block';
+    result.style.color = ok ? '#2a7a17' : '#c0392b';
+    result.textContent = msg;
+  }
+
+  async function send() {
+    const to = input.value.trim();
+    if (!to) { show(false, '받는 사람 이메일을 입력하세요.'); return; }
+
+    btn.disabled = true;
+    btn.textContent = '보내는 중...';
+    try {
+      const res = await fetch(MAIL_SERVER + '/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: to }),
+      });
+      const data = await res.json();
+      show(data.ok, data.message);
+      if (data.ok) input.value = '';
+    } catch (err) {
+      show(false, '서버에 연결하지 못했어요: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '메일 보내기';
+    }
+  }
+
+  btn.addEventListener('click', send);
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter') send(); });
+})();
+</script>
